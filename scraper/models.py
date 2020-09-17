@@ -34,39 +34,49 @@ class Paper(Base):
     datas = relationship('Data', lazy='dynamic')
 
 
-class Ion(Base):
-    __tablename__ = 'ion'
+class UniqueIon(Base):
+    __tablename__ = 'unique_ion'
     id = Column(Integer, primary_key=True)
     charge = Column(Integer)
     name = Column(Text, unique=True)
     smiles = Column(Text, unique=True)
 
-    ions_search = relationship('IonSearch', lazy='dynamic')
+    ions = relationship('Ion', lazy='dynamic')
 
 
-class IonSearch(Base):
-    __tablename__ = 'ion_search'
+class Ion(Base):
+    __tablename__ = 'ion'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     searched = Column(Boolean)
-    ion_id = Column(Integer, ForeignKey(Ion.id))
+    unique_ion_id = Column(Integer, ForeignKey(UniqueIon.id))
 
-    ion = relationship('Ion', foreign_keys='IonSearch.ion_id')
+    unique_ion = relationship('UniqueIon', foreign_keys='Ion.unique_ion_id')
+
+
+class UniqueMolecule(Base):
+    __tablename__ = 'unique_molecule'
+    __table_args__ = (UniqueConstraint('cation_id', 'anion_id', name='ion_id'),)
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, unique=True)
+    cation_id = Column(Integer, ForeignKey(UniqueIon.id))
+    anion_id = Column(Integer, ForeignKey(UniqueIon.id))
+    formula = Column(Text)
+    smiles = Column(Text, unique=True)
+
+    cation = relationship('UniqueIon', foreign_keys='UniqueMolecule.cation_id')
+    anion = relationship('UniqueIon', foreign_keys='UniqueMolecule.anion_id')
+    molecules = relationship('Molecule', lazy='dynamic')
 
 
 class Molecule(Base):
     __tablename__ = 'molecule'
-    # __table_args__ = (UniqueConstraint('cation_id', 'anion_id', name='ion_id'),)
     id = Column(Integer, primary_key=True)
-    code = Column(String(6))
     name = Column(Text, unique=True)
-    cation_id = Column(Integer, ForeignKey(Ion.id))
-    anion_id = Column(Integer, ForeignKey(Ion.id))
-    formula = Column(Text)
-    smiles = Column(Text, unique=True)
+    code = Column(String(6))
+    unique_molecule_id = Column(Integer, ForeignKey(UniqueMolecule.id))
 
-    cation = relationship('Ion', foreign_keys='Molecule.cation_id')
-    anion = relationship('Ion', foreign_keys='Molecule.anion_id')
+    unique_molecule = relationship('UniqueMolecule', foreign_keys='Molecule.unique_molecule_id')
 
 
 class Data(Base):

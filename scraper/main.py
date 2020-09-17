@@ -14,13 +14,13 @@ def main():
     prp_index = put_prp_table(prp_table)
 
     search_queue = Queue()
-    exist_ions = [ion.name for ion in session.query(IonSearch).filter_by(searched=False)]
+    exist_ions = [ion.name for ion in session.query(Ion).filter_by(searched=False)]
     if exist_ions:
         list(map(search_queue.put, exist_ions))
     else:
         search_queue.put(init_ion)
-        ion = put_ion(init_ion)
-        put_ion_search(init_ion, ion)
+        ion = put_unique_ion(init_ion)
+        put_ion(init_ion, ion)
 
     session.commit()
     idxcut = -1
@@ -55,6 +55,8 @@ def main():
 
         for idx, line in enumerate(paper_table):
             print('idx=', idx, line['code'])
+            if line['code'] in ['pxEeK', 'BExHp', 'rjzQF', 'leTaX', 'lfBxY', 'PwbXr']:
+                continue
             # print('[%d%%] Search paper %s %s (%s)...' % (idx*100/len(paper_table), line['code'], line['property'],
             # line['ref']), end='')
             if idx < idxcut:
@@ -79,22 +81,27 @@ def main():
                 cation = anion = None
                 if m_info.get('cation') is not None:
                     cation_name = m_info.get('cation')
-                    cation = put_ion(cation_name)
-                    if not session.query(IonSearch).filter_by(name=cation_name).first():
+                    cation = put_unique_ion(cation_name)
+                    if cation.charge <= 0:
+                        raise Exception('cation charge error')
+                    if not session.query(Ion).filter_by(name=cation_name).first():
                         search_queue.put(cation_name)
-                        put_ion_search(cation_name, cation)
+                        put_ion(cation_name, cation)
                 if m_info.get('anion') is not None:
                     anion_name = m_info.get('anion')
-                    anion = put_ion(anion_name)
-                    if not session.query(IonSearch).filter_by(name=anion_name).first():
+                    anion = put_unique_ion(anion_name)
+                    if anion.charge >= 0:
+                        raise Exception('anion charge error')
+                    if not session.query(Ion).filter_by(name=anion_name).first():
                         search_queue.put(anion_name)
-                        put_ion_search(anion_name, anion)
+                        put_ion(anion_name, anion)
                 # print(cation, anion, type(cation), type(anion))
-                mol = put_molecule(m_info, cation, anion)
+                mol = put_unique_molecule(m_info, cation, anion)
+                put_molecule(m_info, mol)
             session.add(DataSet(code=line['code'], raw_data=raw_data))
             session.commit()
             print('')
-        session.query(IonSearch).filter_by(name=search_name).update({IonSearch.searched: True})
+        session.query(Ion).filter_by(name=search_name).update({Ion.searched: True})
         session.commit()
 
 

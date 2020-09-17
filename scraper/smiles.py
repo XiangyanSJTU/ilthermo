@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from rdkit.Chem import AllChem as Chem
 import pybel
 from urllib.request import urlopen
@@ -50,12 +51,31 @@ def name2smilesinchi(name):
         'hydrogen': '[H][H]',
         'oxygen': 'O=O',
         'nitrogen': 'N#N',
+        'n-butan(ol-d)': 'CCCCO[2H]',
         '3-(10,11-dihydro-5H-dibenzo[a,d]cyclohepten-5-ylidine)-N,N-dimethyl-1-propanamine hydrochloride': '[H+].[Cl-].CN(C)CCC=C1c2ccccc2CCc3ccccc13',
         'acetylferrocene': '[Fe+2].[C-]1C(C(=O)C)=CC=C1.[C-]1C=CC=C1',
-        '2,2\'-[1,2-phenylenebis(nitrilomethylidyne)]bis-phenol': 'Oc1ccccc1CNc1ccccc1NCc1ccccc1O'
+        'ferrocenylsulfonyl(trifluoromethylsulfonyl)imide': '[Fe+2].[C-]1C(S(=O)(=O)[N-]S(=O)(=O)C(F)(F)F)=CC=C1.[C-]1C=CC=C1',
+        '2,2\'-[1,2-phenylenebis(nitrilomethylidyne)]bis-phenol': 'Oc1ccccc1CNc1ccccc1NCc1ccccc1O',
+        'rhodium(1+), [(1,2,5,6-.nu.)-1,5-cyclooctadiene][(2R,2\'R,5R,5\'R)-1,1\'-(1,2-phenylene)bis[2,5-dimethylphospholane-kP]]-, tetrafluoroborate(1-) (1:1)': 'cannot get SMILES, case 1',
+        'N,N\'-ethylenebis(salicylideneiminato)diaquachromium(III) chloride': 'cannot get SMILES, case 2',
+        'diaquabis(4-methylpyridine)iron(3+)  tris[tetrafluoroborate(1-)]': 'cannot get SMILES, case 3',
+        '(N,N-diethylethanamine)(dihydrido)(1-methyl-1H-imidazole-.kappa.N3)boron(1+) bis(trifluoromethylsulfonyl)amide': 'cannot get SMILES, case 4',
+        'micoflavin': 'cannot get SMILES, case 5',
+        '(2-methyloyoxyethyl)dimethylpentyloxyammonium acesulfamate': 'cannot get SMILES, case 6',
+        'rel-(1R,2S)-N-methylephedrine': 'CN(C)[C@@H](C)[C@H](O)c1ccccc1',
+        '(S)-(2-methoxycarbonyl)pyrrolidinium': 'COC(=O)[C@H]1[NH2+]CCC1',
+        'salnaph': 'Oc1ccccc1/C=N/c1cccc2cccc(/N=C/c3ccccc3O)c12',
+        '[bis(salicylidene)ethylenediaminato]oxovanadium': '[V-2](=O)235[N+](=CC1=C(C=CC=C1)O2)CC[N+]3=CC4=CC=CC=C4O5',
+        '2,2-(4\',4\'\'-dihydroxy)diphenylpropane': 'c1(O)ccc(C(C)(C)c2ccc(O)cc2)cc1',
+        '2,2\'-(dodecylimino)bis-ethanol N-oxide': 'C(CCCCCCCCCCC)N(=O)(CCO)CCO',
+        '(+-)-carvedilol': 'COc1ccccc1OCCNCC(O)COc2cccc3[nH]c4ccccc4c23',
+        '5-hydroxy-3-methyl-1,2,3-oxadiazolium inner salt': 'OC1=CN([NH2+]O1)C'
     }
     if name in special_dict:
         smiles = special_dict[name]
+        print(name, smiles)
+        if re.match(r'cannot get SMILES, case \d$', smiles):
+            return smiles, None
         inchi = smiles2inchi(smiles)
         return smiles, inchi
     special_dict = {
@@ -63,6 +83,8 @@ def name2smilesinchi(name):
     }
     if name in special_dict:
         name = special_dict[name]
+    if re.match(r'(|[0-9a-zA-Z()+\[\]\',\- ]+)monohydrate', name):
+        name = re.split(r' monohydrate', name)[0]
     try:
         url = 'https://opsin.ch.cam.ac.uk/opsin/' + name.replace(' ', '%20')
         info = json.loads(urlopen(url).read().decode('utf8'))
@@ -95,6 +117,10 @@ def name2smilesinchi(name):
             cs_results.wait()
             print('ChemSpider: ', name, cs_results)
             if len(cs_results) == 1:
+                result = cs_results[0]
+                smiles = result.smiles
+                inchi = result.inchi
+            else:
                 result = cs_results[0]
                 smiles = result.smiles
                 inchi = result.inchi
